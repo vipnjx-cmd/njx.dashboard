@@ -1,40 +1,40 @@
 {
-    "name": "rolex-njx-panel",
-    "version": "1.0.0",
-    "description": "Painel Rolex NJX",
-    "main": "main.js",
-    "author": "Tu Mesmo",
-    "build": {
-        "appId": "com.rolex.njx.panel",
-        "productName": "Painel Rolex NJX",
-        "directories": {
-            "output": "dist"
-        },
-        "files": [
-            "**/*"
-        ],
-        "extraResources": [
-            ".env"
-        ],
-        "win": {
-            "target": "nsis",
-            "icon": "icon.ico"
-        },
-        "nsis": {
-            "oneClick": false,
-            "allowToChangeInstallationDirectory": true
-        }
+  "name": "rolex-njx-panel",
+  "version": "1.0.0",
+  "description": "Painel Rolex NJX",
+  "main": "main.js",
+  "author": "njx",
+  "scripts": {
+    "start": "node main.js",
+    "build": "electron-builder"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "pg": "^8.11.3"
+  },
+  "devDependencies": {
+    "electron": "^39.2.4",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.rolex.njx.panel",
+    "productName": "Painel Rolex NJX",
+    "directories": {
+      "output": "dist"
     },
-    "scripts": {
-        "start": "electron .",
-        "build": "electron-builder"
+    "files": [
+      "**/*"
+    ],
+    "extraResources": [
+      ".env"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "icon.ico"
     },
-    "dependencies": {
-        "dotenv": "^16.4.5",
-        "pg": "^8.11.3"
-    },
-    "devDependencies": {
-        "electron": "^39.2.4",
-        "electron-builder": "^26.0.12"
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
     }
+  }
 }
