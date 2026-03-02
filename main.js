@@ -1,78 +1,55 @@
-const dotenv = require("dotenv");
+const { app, BrowserWindow, ipcMain, Menu, shell } = require("electron");
 const path = require("path");
-
-// =========================
-// ENV
-// =========================
-dotenv.config({
-  path: process.env.RAILWAY_ENVIRONMENT
-    ? undefined
-    : path.join(__dirname, ".env"),
-});
-
-// =========================
-// Detecta se está no Railway
-// =========================
-const IS_SERVER = !!process.env.RAILWAY_ENVIRONMENT;
-
+const dotenv = require("dotenv");
 const { Pool } = require("pg");
 
 // =========================
-// DB
+// Railway / Server mode
 // =========================
-if (!process.env.DATABASE_URL) {
-  console.error("DATABASE_URL não definido.");
+const isServer = process.env.RAILWAY_ENVIRONMENT || process.env.PORT;
+
+// se estiver no Railway, NÃO inicia Electron
+if (isServer) {
+  console.log("Rodando no Railway (modo servidor). Electron desativado.");
 }
 
+// dev vs build
+if (app && app.isPackaged) {
+  dotenv.config({ path: path.join(process.resourcesPath, ".env") });
+} else {
+  dotenv.config();
+}
+
+let mainWindow = null;
+let isAuthenticated = false;
+let currentAdminId = null;
+let adminStatusInterval = null;
+
+function ensureAuthenticated() {
+  if (!isAuthenticated || !currentAdminId) {
+    throw new Error("Acesso negado: administrador não autenticado.");
+  }
+}
+
+// =========================
+// Conexões Postgres
+// =========================
 const antyPool = new Pool({
   connectionString: process.env.ANTY_DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
+  ssl: { rejectUnauthorized: false }
 });
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
+  ssl: { rejectUnauthorized: false }
 });
 
 // =========================
-// SERVER MODE (Railway)
+// Criar janela (somente local)
 // =========================
-if (IS_SERVER) {
-  const express = require("express");
-  const app = express();
-
-  app.use(express.json());
-
-  app.get("/", async (req, res) => {
-    try {
-      const { rows } = await pool.query("SELECT NOW()");
-      res.json({
-        status: "running",
-        time: rows[0],
-      });
-    } catch (err) {
-      res.status(500).json({ error: err.message });
-    }
-  });
-
-  const port = process.env.PORT || 3000;
-
-  app.listen(port, () => {
-    console.log("Servidor rodando na porta", port);
-  });
-
-  return;
-}
-
-// =========================
-// ELECTRON MODE (LOCAL)
-// =========================
-const { app, BrowserWindow, ipcMain, Menu, shell } = require("electron");
-
-let mainWindow = null;
-let isAuthenticated = false;
-
 function createWindow() {
+  if (isServer) return;
+
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
@@ -88,23 +65,25 @@ function createWindow() {
   });
 }
 
-app.whenReady().then(() => {
-  Menu.setApplicationMenu(null);
-  createWindow();
+// =========================
+// Inicialização
+// =========================
+if (!isServer) {
+  app.whenReady().then(() => {
+    Menu.setApplicationMenu(null);
+    createWindow();
 
-  app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    app.on("activate", () => {
+      if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    });
   });
-});
 
-app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") app.quit();
-});
+  app.on("window-all-closed", () => {
+    if (adminStatusInterval) {
+      clearInterval(adminStatusInterval);
+      adminStatusInterval = null;
+    }
 
-// =========================
-// IPC TEST (mantive mínimo para não quebrar)
-// =========================
-ipcMain.handle("ping-db", async () => {
-  const { rows } = await pool.query("SELECT NOW()");
-  return rows[0];
-});
+    if (process.platform !== "darwin") app.quit();
+  });
+}
